@@ -1,0 +1,16 @@
+.
+..
+.htaccess
+1
+404
+datab
+ex.txt
+example1.txt
+index.html
+new
+paste.php
+php
+phpinfo.php
+sendmail
+site
+smtp.php
