@@ -2,6 +2,7 @@ package by.bsuir.iit.abramov.aipos.ftp.client.listeners;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
 
 import javax.swing.JOptionPane;
 
@@ -47,7 +48,14 @@ public class ManagerConnectButtonListener implements ActionListener {
 
 			final Controller controller = manager.getController();
 			if (controller != null) {
-				controller.connect(host, port, user, pass);
+				try {
+					controller.connect(host, port, user, pass);
+				} catch (final IOException e1) {
+					e1.printStackTrace();
+					JOptionPane.showMessageDialog(manager,
+							"Unable to connect/read list of files");
+					return;
+				}
 			} else {
 				System.out.println(this.getClass() + ": controller == null");
 			}

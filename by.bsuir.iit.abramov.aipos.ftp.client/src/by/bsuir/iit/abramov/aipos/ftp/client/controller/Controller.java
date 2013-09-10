@@ -1,5 +1,8 @@
 package by.bsuir.iit.abramov.aipos.ftp.client.controller;
 
+import java.io.IOException;
+import java.util.List;
+
 import by.bsuir.iit.abramov.aipos.ftp.client.model.Model;
 import by.bsuir.iit.abramov.aipos.ftp.client.view.Window;
 
@@ -13,7 +16,7 @@ public class Controller {
 	}
 
 	public void connect(final String host, final int port, final String user,
-			final String pass) {
+			final String pass) throws IOException {
 
 		model.connect(host, port, user, pass);
 	}
@@ -21,6 +24,11 @@ public class Controller {
 	public void openManager() {
 
 		window.openManager();
+	}
+
+	public void setFileList(final List<String> fileList) {
+
+		window.setFileList(fileList);
 	}
 
 	public void setModel(final Model model) {
@@ -31,5 +39,10 @@ public class Controller {
 	public void setWindow(final Window window) {
 
 		this.window = window;
+	}
+
+	public void updateFileList() {
+
+		model.updateFileList();
 	}
 }

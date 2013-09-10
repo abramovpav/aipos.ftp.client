@@ -1,6 +1,5 @@
 package by.bsuir.iit.abramov.aipos.ftp.client.model;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -18,7 +17,10 @@ import java.util.regex.Pattern;
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
 import by.bsuir.iit.abramov.aipos.ftp.client.util.Operation;
 
-public class Connection implements Runnable {
+public class Connection extends Thread {// implements Runnable {
+
+	private static final int	ECHO_OFF	= 0;
+	private static final int	ECHO_ON		= 1;
 
 	private static final String	END_LINE	= "\r\n";
 
@@ -30,6 +32,7 @@ public class Connection implements Runnable {
 	private BufferedReader		iostream;
 	private BufferedWriter		outstream;
 	private final Controller	controller;
+	private int					echo;
 
 	public Connection(final Controller controller, final String host, final int port,
 			final String user, final String pass) {
@@ -39,10 +42,24 @@ public class Connection implements Runnable {
 		this.port = port;
 		this.user = user;
 		this.pass = pass;
+		echo = 1;
+	}
+
+	private void echoOFF() {
+
+		echo = Connection.ECHO_OFF;
+	}
+
+	private void echoON() {
+
+		echo = Connection.ECHO_ON;
 	}
 
 	private Socket getDataConnection(String str) throws UnknownHostException, IOException {
 
+		if (str == "" || str == null) {
+			return null;
+		}
 		final Pattern pattern = Pattern.compile("(\\d+, *)+\\d+");
 		final Matcher matcher = pattern.matcher(str);
 		if (matcher.find()) {
@@ -56,12 +73,32 @@ public class Connection implements Runnable {
 				ip += ".";
 			}
 		}
-		System.out.println("= " + ip);
 		final int port = Integer.parseInt(s[4]) * 256 + Integer.parseInt(s[5]);
 		System.out.println("ip = " + ip);
 		System.out.println("port = " + port);
 		final Socket sock = new Socket(ip, port);
 		return sock;
+	}
+
+	public List<String> getListOfFiles() throws IOException {
+
+		echoOFF();
+		final List<String> result = new ArrayList<String>();
+		sendRequest(Operation.PASV.getOperation());
+		final String reply = readReply(iostream);
+		final Socket miniSocket = getDataConnection(reply);
+		if (miniSocket == null) {
+			final String error = "miniSocket == null";
+			log(error);
+			return result;
+		}
+		if (miniSocket.isConnected()) {
+			log("Data connection established");
+			sendRequest(Operation.NLST.getOperation());
+			result.addAll(readListOfFiles(miniSocket));
+		}
+		echoON();
+		return result;
 	}
 
 	private final String hideString(final String text) {
@@ -73,46 +110,76 @@ public class Connection implements Runnable {
 		return result;
 	}
 
-	private List<String> readGreeting(final BufferedReader reader) throws IOException {
+	private boolean isEchoOn() {
+
+		return echo == Connection.ECHO_ON;
+	}
+
+	private void log(final String text) {
+
+		System.out.println(text);
+		if (isEchoOn()) {
+			controller.addLogLine(text);
+		}
+	}
+
+	private void login() throws IOException {
+
+		sendRequest(Operation.USER + " " + user);
+		readReply(iostream);
+		sendPass(Operation.PASS + " " + pass);
+		readReply(iostream);
+	}
+
+	private List<String> readListOfFiles(final Socket sock) throws IOException {
 
 		final List<String> result = new ArrayList<String>();
-		String line;
-		do {
-			line = reader.readLine();
-			result.add(line);
-			System.out.println(line);
-			controller.addLogLine(line);
-		} while (reader.ready());
+		if (sock != null) {
+			final BufferedReader istream = new BufferedReader(new InputStreamReader(
+					sock.getInputStream()));
+
+			final BufferedOutputStream fi = new BufferedOutputStream(
+					new FileOutputStream("list.txt"));
+
+			result.addAll(readReplies(istream));
+			fi.close();
+			sock.close();
+			readReplies(iostream);
+
+		}
 		return result;
 	}
 
-	private void readNLST(final Socket sock) throws IOException {
+	private List<String> readReplies(final BufferedReader reader) throws IOException {
 
-		final BufferedInputStream istream = new BufferedInputStream(sock.getInputStream());
-
-		final BufferedOutputStream fi = new BufferedOutputStream(new FileOutputStream(
-				"2.txt"));
-		int val;
-		while ((val = istream.read()) != -1) {
-			fi.write(val);
+		final List<String> result = new ArrayList<String>();
+		if (reader != null) {
+			String line;
+			do {
+				line = reader.readLine();
+				result.add(line);
+				log(line);
+			} while (reader.ready());
 		}
-		fi.close();
-		sock.close();
+		return result;
 
-		readGreeting(iostream);
 	}
 
 	private String readReply(final BufferedReader reader) throws IOException {
 
-		final String line = reader.readLine();
-		System.out.println(line);
-		controller.addLogLine(line);
-		return line;
+		if (reader != null) {
+			final String line = reader.readLine();
+			log(line);
+			return line;
+		} else {
+			return null;
+		}
 	}
 
 	@Override
 	public void run() {
 
+		System.out.println("tadam");
 		try {
 			socket = new Socket(host, port);
 			if (socket.isConnected()) {
@@ -121,24 +188,12 @@ public class Connection implements Runnable {
 						socket.getInputStream()));
 				outstream = new BufferedWriter(new OutputStreamWriter(
 						socket.getOutputStream()));
-				readGreeting(iostream);
-				sendRequest(Operation.USER + " " + user);
-				readReply(iostream);
-				sendPass(Operation.PASS + " " + pass);
-				readReply(iostream);
-				sendRequest(Operation.PASV.getOperation());
-				final String reply = readReply(iostream);
-				final Socket miniSocket = getDataConnection(reply);
-				if (miniSocket.isConnected()) {
-					controller.addLogLine("Data connection established");
-					sendRequest(Operation.NLST.getOperation());
-					readNLST(miniSocket);
-					readGreeting(iostream);
-				}
-			} else {
-				controller.addLogLine("Unable to connect");
-			}
+				readReplies(iostream);
+				login();
 
+			} else {
+				log("Unable to connect");
+			}
 		} catch (final UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -148,24 +203,31 @@ public class Connection implements Runnable {
 			e.printStackTrace();
 			return;
 		}
-
 	}
 
 	private void sendPass(final String request) throws IOException {
 
-		outstream.write(request + Connection.END_LINE);
-		final String hide_pass = hideString(request);
-		System.out.println(Operation.PASS + " " + hide_pass);
-		controller.addLogLine(Operation.PASS + " " + hide_pass);
-		outstream.flush();
+		if (outstream != null) {
+			outstream.write(request + Connection.END_LINE);
+			final String hide_pass = hideString(request);
+			log(Operation.PASS + " " + hide_pass);
+			outstream.flush();
+		}
 	}
 
 	private void sendRequest(final String request) throws IOException {
 
-		outstream.write(request + Connection.END_LINE);
-		System.out.println(request);
-		controller.addLogLine(request);
-		outstream.flush();
+		if (outstream != null) {
+			outstream.write(request + Connection.END_LINE);
+			log(request);
+			outstream.flush();
+		}
+	}
+
+	public void updateList() throws IOException {
+
+		final List<String> fileList = getListOfFiles();
+		controller.setFileList(fileList);
 	}
 
 }

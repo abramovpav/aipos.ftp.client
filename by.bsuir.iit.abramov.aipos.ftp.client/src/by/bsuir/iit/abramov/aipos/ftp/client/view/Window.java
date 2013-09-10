@@ -2,6 +2,7 @@ package by.bsuir.iit.abramov.aipos.ftp.client.view;
 
 import java.awt.Dimension;
 import java.awt.Frame;
+import java.util.List;
 
 import javax.swing.JFrame;
 
@@ -41,5 +42,10 @@ public class Window extends JFrame {
 		final Manager manager = new Manager(controller);
 		manager.setModal(true);
 		manager.setVisible(true);
+	}
+
+	public void setFileList(final List<String> fileList) {
+
+		desktop.setFileList(fileList);
 	}
 }

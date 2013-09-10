@@ -1,23 +1,37 @@
 package by.bsuir.iit.abramov.aipos.ftp.client.view;
 
+import java.util.List;
+
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
+import by.bsuir.iit.abramov.aipos.ftp.client.model.ListModel;
 
 public class Desktop {
 	private final Window	parent;
 	private final JPanel	mainPanel;
 	private final JPanel	headerPanel;
+	private final JPanel	filePanel;
 	private final Logger	logger;
+	private final FileList	fileList;
 
 	public Desktop(final Window parent) {
 
 		this.parent = parent;
 		mainPanel = new JPanel();
 		headerPanel = new DesktopHeaderPanel(this);
+		filePanel = new JPanel();
 		logger = new Logger();
+		final ListModel listModel = new ListModel();
+		fileList = new FileList();
 		initialize();
+	}
+
+	public void addFilesToList(final List<String> list) {
+
+		fileList.addList(list);
 	}
 
 	public void addLogLine(final String text) {
@@ -44,12 +58,32 @@ public class Desktop {
 		return parent;
 	}
 
+	private void initFilePanel() {
+
+		fileList.setVisibleRowCount(30);
+
+		final JScrollPane scrollList = new JScrollPane(fileList);
+
+		filePanel.add(scrollList);
+		fileList.setSize(500, 500);
+
+	}
+
 	private void initialize() {
 
 		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 		mainPanel.add(headerPanel);
 		mainPanel.add(logger);
+		mainPanel.add(filePanel);
 		logger.setEditable(false);
 		addLogLine("Hello, man!");
+		initFilePanel();
 	}
+
+	public void setFileList(final List<String> fileList) {
+
+		this.fileList.clear();
+		addFilesToList(fileList);
+	}
+
 }

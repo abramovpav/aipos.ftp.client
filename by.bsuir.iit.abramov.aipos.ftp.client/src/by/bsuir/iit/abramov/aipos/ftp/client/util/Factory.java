@@ -2,6 +2,7 @@ package by.bsuir.iit.abramov.aipos.ftp.client.util;
 
 import java.awt.event.ActionListener;
 
+import by.bsuir.iit.abramov.aipos.ftp.client.listeners.DisconnectButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.ManagerConnectButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.OpenManagerButtonListener;
 
@@ -12,7 +13,7 @@ public class Factory {
 			case MANAGER:
 				return new OpenManagerButtonListener();
 			case DISCONNECT:
-				return null;
+				return new DisconnectButtonListener();
 			default:
 				return null;
 		}
