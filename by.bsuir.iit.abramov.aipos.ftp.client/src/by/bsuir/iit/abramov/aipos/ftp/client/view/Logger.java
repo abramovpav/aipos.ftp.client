@@ -1,6 +1,7 @@
 package by.bsuir.iit.abramov.aipos.ftp.client.view;
 
 import javax.swing.JTextPane;
+import javax.swing.text.DefaultCaret;
 
 public class Logger extends JTextPane {
 
@@ -9,6 +10,8 @@ public class Logger extends JTextPane {
 	public Logger() {
 
 		super();
+		final DefaultCaret caret = (DefaultCaret) getCaret();
+		caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 	}
 
 	public void addLine(final String text) {

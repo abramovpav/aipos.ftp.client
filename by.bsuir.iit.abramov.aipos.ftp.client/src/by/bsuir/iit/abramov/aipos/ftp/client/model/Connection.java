@@ -1,9 +1,7 @@
 package by.bsuir.iit.abramov.aipos.ftp.client.model;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -33,6 +31,13 @@ public class Connection extends Thread {// implements Runnable {
 	private BufferedWriter		outstream;
 	private final Controller	controller;
 	private int					echo;
+	private boolean				command_login;
+	private boolean				login;
+	private boolean				PASV;
+	private boolean				command_CDUP;
+	private boolean				command_CWD;
+	private boolean				command_UpdateList;
+	private String				CWD_path;
 
 	public Connection(final Controller controller, final String host, final int port,
 			final String user, final String pass) {
@@ -43,6 +48,52 @@ public class Connection extends Thread {// implements Runnable {
 		this.user = user;
 		this.pass = pass;
 		echo = 1;
+		CWD_path = "";
+		command_login = true;
+	}
+
+	private void CDUP() {
+
+		sendRequest(Operation.CDUP.getOperation());
+		readReplies(iostream);
+		final List<String> list = getListOfFiles();
+		controller.setFileList(list);
+	}
+
+	private void createSocket() {
+
+		try {
+			socket = new Socket(host, port);
+		} catch (final UnknownHostException e) {
+			e.printStackTrace();
+			log("Unable to connect: check login data");
+		} catch (final IOException e) {
+			e.printStackTrace();
+			log("Unable to connect. Try later");
+		}
+	}
+
+	private void createSocketAndLogin() {
+
+		createSocket();
+		if (socket.isConnected()) {
+			login = true;
+			log("Control connection established");
+			extractStreams();
+			readReplies(iostream);
+			login();
+
+		} else {
+			log("Unable to connect");
+		}
+	}
+
+	private void CWD(final String path) {
+
+		sendRequest(Operation.CWD + " " + path);
+		readReplies(iostream);
+		final List<String> list = getListOfFiles();
+		controller.setFileList(list);
 	}
 
 	private void echoOFF() {
@@ -55,32 +106,57 @@ public class Connection extends Thread {// implements Runnable {
 		echo = Connection.ECHO_ON;
 	}
 
-	private Socket getDataConnection(String str) throws UnknownHostException, IOException {
+	private void extractStreams() {
+
+		try {
+			iostream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			outstream = new BufferedWriter(new OutputStreamWriter(
+					socket.getOutputStream()));
+		} catch (final IOException e) {
+			e.printStackTrace();
+			log("Error: can't get stream");
+		}
+	}
+
+	private Socket getDataConnection(String str) {
 
 		if (str == "" || str == null) {
 			return null;
 		}
+
 		final Pattern pattern = Pattern.compile("(\\d+, *)+\\d+");
 		final Matcher matcher = pattern.matcher(str);
 		if (matcher.find()) {
 			str = matcher.group();
 		}
+
 		final String s[] = str.split(",");
 		String ip = "";
 		for (int i = 0; i < 4; i++) {
+
 			ip += s[i];
 			if (i < 3) {
 				ip += ".";
+
 			}
 		}
 		final int port = Integer.parseInt(s[4]) * 256 + Integer.parseInt(s[5]);
 		System.out.println("ip = " + ip);
 		System.out.println("port = " + port);
-		final Socket sock = new Socket(ip, port);
+		Socket sock = null;
+		try {
+			sock = new Socket(ip, port);
+		} catch (final UnknownHostException e) {
+			// e.printStackTrace();
+			log("Unable to open data stream(wrong host)");
+		} catch (final IOException e) {
+			// e.printStackTrace();
+			log("Unable to open data stream");
+		}
 		return sock;
 	}
 
-	public List<String> getListOfFiles() throws IOException {
+	private List<String> getListOfFiles() {
 
 		echoOFF();
 		final List<String> result = new ArrayList<String>();
@@ -123,108 +199,166 @@ public class Connection extends Thread {// implements Runnable {
 		}
 	}
 
-	private void login() throws IOException {
+	private void login() {
 
 		sendRequest(Operation.USER + " " + user);
-		readReply(iostream);
+		readReplies(iostream);
 		sendPass(Operation.PASS + " " + pass);
-		readReply(iostream);
+		readReplies(iostream);
 	}
 
-	private List<String> readListOfFiles(final Socket sock) throws IOException {
+	private List<String> readListOfFiles(final Socket sock) {
 
 		final List<String> result = new ArrayList<String>();
 		if (sock != null) {
-			final BufferedReader istream = new BufferedReader(new InputStreamReader(
-					sock.getInputStream()));
-
-			final BufferedOutputStream fi = new BufferedOutputStream(
-					new FileOutputStream("list.txt"));
+			BufferedReader istream = null;
+			try {
+				istream = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+			} catch (final IOException e) {
+				// e.printStackTrace();
+				log("Unable extract stream from data socket");
+			}
 
 			result.addAll(readReplies(istream));
-			fi.close();
-			sock.close();
+			try {
+				sock.close();
+			} catch (final IOException e) {
+				// e.printStackTrace();
+				echoOFF();
+				log("Error: unable to close data socket");
+				echoON();
+			}
 			readReplies(iostream);
 
 		}
 		return result;
 	}
 
-	private List<String> readReplies(final BufferedReader reader) throws IOException {
+	private List<String> readReplies(final BufferedReader reader) {
 
 		final List<String> result = new ArrayList<String>();
 		if (reader != null) {
 			String line;
-			do {
-				line = reader.readLine();
-				result.add(line);
-				log(line);
-			} while (reader.ready());
+			try {
+				echoOFF();
+				log("wait for read stream");
+				while (!reader.ready()) {
+					;
+				}
+				log("try to read stream");
+				echoON();
+				while (reader.ready()) {
+					line = reader.readLine();
+					result.add(line);
+					log(line);
+				}
+			} catch (final IOException e) {
+				e.printStackTrace();
+				log("Unable to read stream. Try again");
+			}
 		}
 		return result;
 
 	}
 
-	private String readReply(final BufferedReader reader) throws IOException {
+	private String readReply(final BufferedReader reader) {
 
 		if (reader != null) {
-			final String line = reader.readLine();
-			log(line);
-			return line;
-		} else {
-			return null;
+			try {
+				echoOFF();
+				log("wait for read stream");
+				while (!reader.ready()) {
+					;
+				}
+				log("try to read stream");
+				echoON();
+				final String line = reader.readLine();
+				log(line);
+				return line;
+			} catch (final IOException e) {
+				// e.printStackTrace();
+				log("Unable to read stream. Try again");
+			}
 		}
+		return null;
 	}
 
 	@Override
 	public void run() {
 
-		System.out.println("tadam");
-		try {
-			socket = new Socket(host, port);
-			if (socket.isConnected()) {
-				controller.addLogLine("Control connection established");
-				iostream = new BufferedReader(new InputStreamReader(
-						socket.getInputStream()));
-				outstream = new BufferedWriter(new OutputStreamWriter(
-						socket.getOutputStream()));
-				readReplies(iostream);
-				login();
+		while (true) {
 
-			} else {
-				log("Unable to connect");
+			if (command_login) {
+				if (!login) {
+					createSocketAndLogin();
+				}
+				command_login = false;
 			}
-		} catch (final UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		} catch (final IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
+			if (command_CWD) {
+				if (!"".equals(CWD_path)) {
+					CWD(CWD_path);
+				}
+				CWD_path = "";
+				command_CWD = false;
+			}
+			if (command_CDUP) {
+				CDUP();
+				command_CDUP = false;
+			}
+			if (command_UpdateList) {
+				updateList();
+				command_UpdateList = false;
+			}
+
 		}
 	}
 
-	private void sendPass(final String request) throws IOException {
+	private void sendPass(final String request) {
 
 		if (outstream != null) {
-			outstream.write(request + Connection.END_LINE);
-			final String hide_pass = hideString(request);
-			log(Operation.PASS + " " + hide_pass);
-			outstream.flush();
+			try {
+				outstream.write(request + Connection.END_LINE);
+				final String hide_pass = hideString(request);
+				log(Operation.PASS + " " + hide_pass);
+				outstream.flush();
+			} catch (final IOException e) {
+				// e.printStackTrace();
+				log("Unable to write in stream");
+			}
 		}
 	}
 
-	private void sendRequest(final String request) throws IOException {
+	private void sendRequest(final String request) {
 
 		if (outstream != null) {
-			outstream.write(request + Connection.END_LINE);
-			log(request);
-			outstream.flush();
+			try {
+				outstream.write(request + Connection.END_LINE);
+				log(request);
+				outstream.flush();
+			} catch (final IOException e) {
+				e.printStackTrace();
+				log("Unable to write in stream");
+			}
 		}
 	}
 
-	public void updateList() throws IOException {
+	public void taskChangeDirectory(final String path) {
+
+		command_CWD = true;
+		CWD_path = path;
+	}
+
+	public void taskChangeDirectoryUP() {
+
+		command_CDUP = true;
+	}
+
+	public void taskUpdateList() {
+
+		command_UpdateList = true;
+	}
+
+	private void updateList() {
 
 		final List<String> fileList = getListOfFiles();
 		controller.setFileList(fileList);

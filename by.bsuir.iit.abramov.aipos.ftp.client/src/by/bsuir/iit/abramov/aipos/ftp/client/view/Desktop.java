@@ -7,6 +7,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
+import by.bsuir.iit.abramov.aipos.ftp.client.listeners.JListMouseListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.model.ListModel;
 
 public class Desktop {
@@ -61,6 +62,7 @@ public class Desktop {
 	private void initFilePanel() {
 
 		fileList.setVisibleRowCount(30);
+		fileList.addMouseListener(new JListMouseListener(getController(), fileList));
 
 		final JScrollPane scrollList = new JScrollPane(fileList);
 
@@ -73,7 +75,8 @@ public class Desktop {
 
 		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 		mainPanel.add(headerPanel);
-		mainPanel.add(logger);
+		final JScrollPane scrollList = new JScrollPane(logger);
+		mainPanel.add(scrollList);
 		mainPanel.add(filePanel);
 		logger.setEditable(false);
 		addLogLine("Hello, man!");

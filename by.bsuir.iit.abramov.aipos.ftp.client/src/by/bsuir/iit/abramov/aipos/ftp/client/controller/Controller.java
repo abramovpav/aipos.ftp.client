@@ -15,10 +15,20 @@ public class Controller {
 		window.addLogLine(text);
 	}
 
+	public void CDUP() {
+
+		model.CDUP();
+	}
+
 	public void connect(final String host, final int port, final String user,
 			final String pass) throws IOException {
 
 		model.connect(host, port, user, pass);
+	}
+
+	public void CWD(final String path) {
+
+		model.CWD(path);
 	}
 
 	public void openManager() {

@@ -10,12 +10,16 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
-import javax.swing.filechooser.FileSystemView;
+
+import by.bsuir.iit.abramov.aipos.ftp.client.model.ListModel;
 
 public class FileRenderer extends DefaultListCellRenderer {
 
 	public static String getFileExtention(final String filename) {
 
+		if (filename == null) {
+			return "";
+		}
 		int dotPos = filename.lastIndexOf(".");
 		if (dotPos == -1) {
 			dotPos = filename.length();
@@ -50,6 +54,15 @@ public class FileRenderer extends DefaultListCellRenderer {
 		final JLabel label = (JLabel) c;
 		final String str = (String) value;
 		File file;
+		FileList fileList = null;
+		if (FileList.class.equals(list.getClass())) {
+			fileList = (FileList) list;
+		}
+		final javax.swing.ListModel lstModel = list.getModel();
+		ListModel listModel = null;
+		if (ListModel.class.equals(lstModel.getClass())) {
+			listModel = (ListModel) lstModel;
+		}
 		try {
 			final String fileExtention = FileRenderer.getFileExtention(str);
 			file = File.createTempFile("temp", fileExtention);
@@ -59,8 +72,16 @@ public class FileRenderer extends DefaultListCellRenderer {
 				final ImageIcon icon = new ImageIcon("icons" + File.separator
 						+ "folder2.png");
 				label.setIcon(icon);
+
+				if (listModel != null && fileList != null) {
+					final Object item = listModel.get(index);
+					if (!fileList.containsKey(item)) {
+						fileList.put(item, true);
+					}
+				}
+
 			} else {
-				label.setIcon(FileSystemView.getFileSystemView().getSystemIcon(file));
+				// label.setIcon(FileSystemView.getFileSystemView().getSystemIcon(file));
 			}
 			if (pad) {
 				label.setBorder(padBorder);

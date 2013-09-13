@@ -14,6 +14,11 @@ public class Model {
 		this.controller = controller;
 	}
 
+	public void CDUP() {
+
+		connection.taskChangeDirectoryUP();
+	}
+
 	public void connect(final String host, final int port, final String user,
 			final String pass) throws IOException {
 
@@ -22,13 +27,13 @@ public class Model {
 		thread.start();
 	}
 
+	public void CWD(final String path) {
+
+		connection.taskChangeDirectory(path);
+	}
+
 	public void updateFileList() {
 
-		try {
-			connection.updateList();
-		} catch (final IOException e) {
-			e.printStackTrace();
-			return;
-		}
+		connection.taskUpdateList();
 	}
 }
