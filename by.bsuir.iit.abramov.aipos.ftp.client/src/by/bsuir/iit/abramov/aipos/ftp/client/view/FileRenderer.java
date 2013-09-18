@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.swing.DefaultListCellRenderer;
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -68,10 +69,16 @@ public class FileRenderer extends DefaultListCellRenderer {
 		}
 		try {
 			label.setText(name);
-			if (item.isDirectory()) {// "".equals(fileExtention)) {
+			if (item.isDirectory()) {
 				final ImageIcon icon = new ImageIcon("icons" + File.separator
 						+ "folder2.png");
-				label.setIcon(icon);
+				if (icon != null) {
+					try {
+						label.setIcon(icon);
+					} catch (final NullPointerException e1) {
+						System.out.println("problem with icon");
+					}
+				}
 
 				if (listModel != null && fileList != null) {
 					final Object element = listModel.get(index);
@@ -84,7 +91,17 @@ public class FileRenderer extends DefaultListCellRenderer {
 				final String fileExtention = FileRenderer.getFileExtention(name);
 				file = File.createTempFile("temp", fileExtention);
 				if (file.exists()) {
-					label.setIcon(FileSystemView.getFileSystemView().getSystemIcon(file));
+					final Icon systemIcon = FileSystemView.getFileSystemView()
+							.getSystemIcon(file);
+					if (systemIcon != null) {
+						try {
+							label.setIcon(systemIcon);
+						} catch (final NullPointerException e) {
+							System.out.println("problem with icon");
+						}
+					} else {
+						System.out.println("can't get system icon");
+					}
 				}
 			}
 			if (pad) {

@@ -43,6 +43,11 @@ public class Window extends JFrame {
 		return controller;
 	}
 
+	public Object[] getSelectedValues() {
+
+		return desktop.getSelectedValues();
+	}
+
 	public void openManager() {
 
 		final Manager manager = new Manager(controller);

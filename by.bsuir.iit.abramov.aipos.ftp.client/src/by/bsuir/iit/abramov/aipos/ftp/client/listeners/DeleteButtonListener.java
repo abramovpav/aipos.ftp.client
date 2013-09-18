@@ -2,16 +2,16 @@ package by.bsuir.iit.abramov.aipos.ftp.client.listeners;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
 
-import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
 import by.bsuir.iit.abramov.aipos.ftp.client.util.ExtJButton;
 import by.bsuir.iit.abramov.aipos.ftp.client.util.ExtJComponent;
 import by.bsuir.iit.abramov.aipos.ftp.client.util.ExtJMenuItem;
+import by.bsuir.iit.abramov.aipos.ftp.client.util.FileListItem;
 
-public class STOREButtonListener implements ActionListener {
+public class DeleteButtonListener implements ActionListener {
 
 	@Override
 	public void actionPerformed(final ActionEvent e) {
@@ -35,15 +35,26 @@ public class STOREButtonListener implements ActionListener {
 			return;
 		}
 		final Controller controller = (Controller) obj;
-
-		final JFileChooser chooser = new JFileChooser();
-		final int returnVal = chooser.showOpenDialog(null);
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			final File file = chooser.getSelectedFile();
-			controller.STORE(file.getName(), file.getAbsolutePath());
-		} else {
-			System.out.println("cancel retr");
+		final Object[] selectedObjects = controller.getSelectedValues();
+		if (selectedObjects.length <= 0) {
+			JOptionPane.showMessageDialog(null, "No item is selected");
+			return;
 		}
+		for (final Object object : selectedObjects) {
+			if (FileListItem.class.equals(object.getClass())) {
+				final FileListItem item = (FileListItem) object;
+				System.out.println(item.getName());
+				if (!item.isDirectory()) {
+					controller.delete(item.getName());
+				} else {
+					System.out.println("it's a directory");
+				}
+			} else {
+				System.out.println("Wrong type of the selected item");
+			}
+		}
+
+		controller.updateFileList();
 
 	}
 

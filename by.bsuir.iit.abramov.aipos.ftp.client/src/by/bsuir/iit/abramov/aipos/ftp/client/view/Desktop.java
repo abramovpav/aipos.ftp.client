@@ -60,6 +60,11 @@ public class Desktop {
 		return parent;
 	}
 
+	public final Object[] getSelectedValues() {
+
+		return fileList.getSelectedValues();
+	}
+
 	private void initFilePanel() {
 
 		fileList.setVisibleRowCount(30);

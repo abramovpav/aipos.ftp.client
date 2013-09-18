@@ -37,6 +37,16 @@ public class Controller {
 		model.CWD(path);
 	}
 
+	public void delete(final String path) {
+
+		model.delete(path);
+	}
+
+	public Object[] getSelectedValues() {
+
+		return window.getSelectedValues();
+	}
+
 	public void openManager() {
 
 		window.openManager();
@@ -67,9 +77,9 @@ public class Controller {
 		this.window = window;
 	}
 
-	public void STORE(final String path) {
+	public void STORE(final String serverPath, final String path) {
 
-		// model.STORE(path);
+		model.STORE(serverPath, path);
 	}
 
 	public void updateFileList() {

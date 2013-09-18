@@ -2,16 +2,13 @@ package by.bsuir.iit.abramov.aipos.ftp.client.listeners;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-
-import javax.swing.JFileChooser;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
 import by.bsuir.iit.abramov.aipos.ftp.client.util.ExtJButton;
 import by.bsuir.iit.abramov.aipos.ftp.client.util.ExtJComponent;
 import by.bsuir.iit.abramov.aipos.ftp.client.util.ExtJMenuItem;
 
-public class STOREButtonListener implements ActionListener {
+public class RefreshButtonListener implements ActionListener {
 
 	@Override
 	public void actionPerformed(final ActionEvent e) {
@@ -35,15 +32,7 @@ public class STOREButtonListener implements ActionListener {
 			return;
 		}
 		final Controller controller = (Controller) obj;
-
-		final JFileChooser chooser = new JFileChooser();
-		final int returnVal = chooser.showOpenDialog(null);
-		if (returnVal == JFileChooser.APPROVE_OPTION) {
-			final File file = chooser.getSelectedFile();
-			controller.STORE(file.getName(), file.getAbsolutePath());
-		} else {
-			System.out.println("cancel retr");
-		}
+		controller.updateFileList();
 
 	}
 

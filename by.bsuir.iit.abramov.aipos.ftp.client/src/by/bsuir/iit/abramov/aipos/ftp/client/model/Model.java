@@ -43,6 +43,11 @@ public class Model {
 		}
 	}
 
+	public void delete(final String path) {
+
+		connection.taskDeleteFile(path);
+	}
+
 	private void errorMessage() {
 
 		controller.addLogLine("Wrong path");
@@ -61,6 +66,11 @@ public class Model {
 			return;
 		}
 		connection.taskRETRFile(serverPath, path);
+	}
+
+	public void STORE(final String serverPath, final String path) {
+
+		connection.taskSTORE(serverPath, path);
 	}
 
 	public void updateFileList() {

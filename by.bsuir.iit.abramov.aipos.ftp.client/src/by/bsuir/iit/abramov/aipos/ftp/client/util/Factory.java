@@ -3,9 +3,11 @@ package by.bsuir.iit.abramov.aipos.ftp.client.util;
 import java.awt.event.ActionListener;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.CDUPButtonListener;
+import by.bsuir.iit.abramov.aipos.ftp.client.listeners.DeleteButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.DisconnectButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.ManagerConnectButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.OpenManagerButtonListener;
+import by.bsuir.iit.abramov.aipos.ftp.client.listeners.RefreshButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.STOREButtonListener;
 
 public class Factory {
@@ -20,6 +22,10 @@ public class Factory {
 				return new CDUPButtonListener();
 			case STORE:
 				return new STOREButtonListener();
+			case DELETE:
+				return new DeleteButtonListener();
+			case REFRESH:
+				return new RefreshButtonListener();
 			default:
 				return null;
 		}
