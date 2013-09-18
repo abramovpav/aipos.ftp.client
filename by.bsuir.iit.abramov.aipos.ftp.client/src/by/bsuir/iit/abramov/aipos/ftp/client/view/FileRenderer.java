@@ -10,8 +10,10 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileSystemView;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.model.ListModel;
+import by.bsuir.iit.abramov.aipos.ftp.client.util.FileListItem;
 
 public class FileRenderer extends DefaultListCellRenderer {
 
@@ -52,7 +54,8 @@ public class FileRenderer extends DefaultListCellRenderer {
 		final Component c = super.getListCellRendererComponent(list, value, index,
 				isSelected, cellHasFocus);
 		final JLabel label = (JLabel) c;
-		final String str = (String) value;
+		final FileListItem item = (FileListItem) value;
+		final String name = item.getName();
 		File file;
 		FileList fileList = null;
 		if (FileList.class.equals(list.getClass())) {
@@ -64,24 +67,25 @@ public class FileRenderer extends DefaultListCellRenderer {
 			listModel = (ListModel) lstModel;
 		}
 		try {
-			final String fileExtention = FileRenderer.getFileExtention(str);
-			file = File.createTempFile("temp", fileExtention);
-
-			label.setText(str);
-			if ("".equals(fileExtention)) {
+			label.setText(name);
+			if (item.isDirectory()) {// "".equals(fileExtention)) {
 				final ImageIcon icon = new ImageIcon("icons" + File.separator
 						+ "folder2.png");
 				label.setIcon(icon);
 
 				if (listModel != null && fileList != null) {
-					final Object item = listModel.get(index);
-					if (!fileList.containsKey(item)) {
-						fileList.put(item, true);
+					final Object element = listModel.get(index);
+					if (!fileList.containsKey(element)) {
+						fileList.put(element);
 					}
 				}
 
 			} else {
-				// label.setIcon(FileSystemView.getFileSystemView().getSystemIcon(file));
+				final String fileExtention = FileRenderer.getFileExtention(name);
+				file = File.createTempFile("temp", fileExtention);
+				if (file.exists()) {
+					label.setIcon(FileSystemView.getFileSystemView().getSystemIcon(file));
+				}
 			}
 			if (pad) {
 				label.setBorder(padBorder);

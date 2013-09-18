@@ -7,6 +7,7 @@ import java.util.List;
 import javax.swing.JFrame;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
+import by.bsuir.iit.abramov.aipos.ftp.client.util.FileListItem;
 
 public class Window extends JFrame {
 	private static final String	TITLE	= "Title";
@@ -44,8 +45,8 @@ public class Window extends JFrame {
 		manager.setVisible(true);
 	}
 
-	public void setFileList(final List<String> fileList) {
+	public void setFilesInList(final List<FileListItem> arg0) {
 
-		desktop.setFileList(fileList);
+		desktop.setFilesInList(arg0);
 	}
 }

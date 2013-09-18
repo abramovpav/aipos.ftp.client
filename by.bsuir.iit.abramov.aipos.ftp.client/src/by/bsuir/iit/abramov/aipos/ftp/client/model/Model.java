@@ -3,6 +3,7 @@ package by.bsuir.iit.abramov.aipos.ftp.client.model;
 import java.io.IOException;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
+import by.bsuir.iit.abramov.aipos.ftp.client.util.FileListItem;
 
 public class Model {
 
@@ -27,9 +28,25 @@ public class Model {
 		thread.start();
 	}
 
-	public void CWD(final String path) {
+	public void CWD(final Object path) {
 
-		connection.taskChangeDirectory(path);
+		if (path == null) {
+			errorMessage();
+			return;
+		}
+		if (FileListItem.class.equals(path.getClass())) {
+			connection.taskChangeDirectory(((FileListItem) path).getName());
+		} else if (String.class.equals(path.getClass())) {
+			connection.taskChangeDirectory((String) path);
+		} else {
+			errorMessage();
+		}
+	}
+
+	private void errorMessage() {
+
+		controller.addLogLine("Wrong path");
+		System.out.println("Wrong path");
 	}
 
 	public void updateFileList() {

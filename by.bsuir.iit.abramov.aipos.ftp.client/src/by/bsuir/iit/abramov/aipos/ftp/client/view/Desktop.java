@@ -9,6 +9,7 @@ import javax.swing.JScrollPane;
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.JListMouseListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.model.ListModel;
+import by.bsuir.iit.abramov.aipos.ftp.client.util.FileListItem;
 
 public class Desktop {
 	private final Window	parent;
@@ -28,11 +29,6 @@ public class Desktop {
 		final ListModel listModel = new ListModel();
 		fileList = new FileList();
 		initialize();
-	}
-
-	public void addFilesToList(final List<String> list) {
-
-		fileList.addList(list);
 	}
 
 	public void addLogLine(final String text) {
@@ -83,10 +79,10 @@ public class Desktop {
 		initFilePanel();
 	}
 
-	public void setFileList(final List<String> fileList) {
+	public void setFilesInList(final List<FileListItem> arg0) {
 
-		this.fileList.clear();
-		addFilesToList(fileList);
+		fileList.clear();
+		fileList.addFiles(arg0);
 	}
 
 }

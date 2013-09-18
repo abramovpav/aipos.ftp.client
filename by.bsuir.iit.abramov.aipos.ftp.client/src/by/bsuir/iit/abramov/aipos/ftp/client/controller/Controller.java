@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.model.Model;
+import by.bsuir.iit.abramov.aipos.ftp.client.util.FileListItem;
 import by.bsuir.iit.abramov.aipos.ftp.client.view.Window;
 
 public class Controller {
@@ -26,7 +27,7 @@ public class Controller {
 		model.connect(host, port, user, pass);
 	}
 
-	public void CWD(final String path) {
+	public void CWD(final Object path) {
 
 		model.CWD(path);
 	}
@@ -36,9 +37,9 @@ public class Controller {
 		window.openManager();
 	}
 
-	public void setFileList(final List<String> fileList) {
+	public void setFilesInList(final List<FileListItem> arg0) {
 
-		window.setFileList(fileList);
+		window.setFilesInList(arg0);
 	}
 
 	public void setModel(final Model model) {

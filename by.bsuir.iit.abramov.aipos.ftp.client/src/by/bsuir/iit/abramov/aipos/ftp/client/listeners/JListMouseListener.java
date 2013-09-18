@@ -22,6 +22,9 @@ public class JListMouseListener implements MouseListener {
 	@Override
 	public void mouseClicked(final MouseEvent e) {
 
+		if (e.getClickCount() != 2) {
+			return;
+		}
 		if (list == null) {
 			System.out.println(this.getClass() + ": list == null");
 			return;
@@ -31,7 +34,7 @@ public class JListMouseListener implements MouseListener {
 		if (FileList.class.equals(list.getClass())) {
 			final FileList fileList = (FileList) list;
 			if (fileList.isDirectory(selectedItem)) {
-				controller.CWD((String) selectedItem);
+				controller.CWD(selectedItem);
 			}
 		}
 

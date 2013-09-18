@@ -1,18 +1,18 @@
 package by.bsuir.iit.abramov.aipos.ftp.client.view;
 
 import java.io.File;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import javax.swing.JList;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.model.ListModel;
+import by.bsuir.iit.abramov.aipos.ftp.client.util.FileListItem;
 
 public class FileList extends JList {
-	private boolean					vertical;
-	private ListModel				listModel;
-	private Map<Object, Boolean>	map;
+	private boolean			vertical;
+	private ListModel		listModel;
+	private List<Object>	map;
 
 	public FileList() {
 
@@ -32,16 +32,14 @@ public class FileList extends JList {
 		initialize();
 	}
 
-	public void addElement(final String element) {
+	public void addElement(final FileListItem element) {
 
 		listModel.addElement(element);
 	}
 
-	public void addList(final List<String> list) {
+	public void addFiles(final List<FileListItem> arg0) {
 
-		for (int i = 0; i < list.size(); i++) {
-			addElement(list.get(i));
-		}
+		listModel.addAll(arg0);
 	}
 
 	public void clear() {
@@ -54,14 +52,14 @@ public class FileList extends JList {
 		map.clear();
 	}
 
-	public boolean containsKey(final Object key) {
+	public boolean containsKey(final Object obj) {
 
-		return map.containsKey(key);
+		return map.contains(obj);
 	}
 
 	private void initialize() {
 
-		map = new HashMap<Object, Boolean>();
+		map = new ArrayList<Object>();
 		listModel = new ListModel();
 		setModel(listModel);
 		vertical = true;
@@ -77,14 +75,16 @@ public class FileList extends JList {
 
 	public boolean isDirectory(final Object obj) {
 
-		if (map.containsKey(obj)) {
-			return map.get(obj);
+		if (map.contains(obj)) {
+			if (FileListItem.class.equals(obj.getClass())) {
+				return ((FileListItem) obj).isDirectory();
+			}
 		}
 		return false;
 	}
 
-	public void put(final Object item, final Boolean bool) {
+	public void put(final Object item) {
 
-		map.put(item, bool);
+		map.add(item);
 	}
 }

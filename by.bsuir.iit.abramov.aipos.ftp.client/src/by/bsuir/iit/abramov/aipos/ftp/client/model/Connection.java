@@ -13,10 +13,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import by.bsuir.iit.abramov.aipos.ftp.client.controller.Controller;
+import by.bsuir.iit.abramov.aipos.ftp.client.util.FileListItem;
 import by.bsuir.iit.abramov.aipos.ftp.client.util.Operation;
 
-public class Connection extends Thread {// implements Runnable {
+public class Connection implements Runnable {
 
+	private static final int	MODE_LIST	= 1;
+	private static final int	MODE_NLST	= 0;
+	private static final int	SLEEP_TIME	= 10;
 	private static final int	ECHO_OFF	= 0;
 	private static final int	ECHO_ON		= 1;
 
@@ -56,8 +60,7 @@ public class Connection extends Thread {// implements Runnable {
 
 		sendRequest(Operation.CDUP.getOperation());
 		readReplies(iostream);
-		final List<String> list = getListOfFiles();
-		controller.setFileList(list);
+		updateList();
 	}
 
 	private void createSocket() {
@@ -92,8 +95,7 @@ public class Connection extends Thread {// implements Runnable {
 
 		sendRequest(Operation.CWD + " " + path);
 		readReplies(iostream);
-		final List<String> list = getListOfFiles();
-		controller.setFileList(list);
+		updateList();
 	}
 
 	private void echoOFF() {
@@ -156,10 +158,10 @@ public class Connection extends Thread {// implements Runnable {
 		return sock;
 	}
 
-	private List<String> getListOfFiles() {
+	private final List<FileListItem> getListOfFiles(final int mode) {
 
 		echoOFF();
-		final List<String> result = new ArrayList<String>();
+		final List<FileListItem> result = new ArrayList<FileListItem>();
 		sendRequest(Operation.PASV.getOperation());
 		final String reply = readReply(iostream);
 		final Socket miniSocket = getDataConnection(reply);
@@ -170,8 +172,12 @@ public class Connection extends Thread {// implements Runnable {
 		}
 		if (miniSocket.isConnected()) {
 			log("Data connection established");
-			sendRequest(Operation.NLST.getOperation());
-			result.addAll(readListOfFiles(miniSocket));
+			if (mode == Connection.MODE_NLST) {
+				sendRequest(Operation.NLST.getOperation());
+			} else if (mode == Connection.MODE_LIST) {
+				sendRequest(Operation.LIST.getOperation());
+			}
+			result.addAll(readListOfFiles(miniSocket, mode));
 		}
 		echoON();
 		return result;
@@ -184,6 +190,11 @@ public class Connection extends Thread {// implements Runnable {
 			result += "*";
 		}
 		return result;
+	}
+
+	private boolean isDirectory(final String[] sublines) {
+
+		return sublines[0].charAt(0) == 'd';
 	}
 
 	private boolean isEchoOn() {
@@ -207,9 +218,60 @@ public class Connection extends Thread {// implements Runnable {
 		readReplies(iostream);
 	}
 
-	private List<String> readListOfFiles(final Socket sock) {
+	private void prepareToReadStream(final BufferedReader reader) throws IOException {
 
-		final List<String> result = new ArrayList<String>();
+		echoOFF();
+		log("Wait for read stream");
+		double t = 0;
+		double limit = 1.0;
+		while (!reader.ready()) {
+			sleep();
+			t += Connection.SLEEP_TIME;
+			if (t / 2000 >= limit) {
+				log("Waiting for long. Cancel the operation and try again");
+				limit += 1;
+				if (Math.abs(10000 - t) < Connection.SLEEP_TIME * 2) {
+					t = 0;
+					limit = 1.0;
+				}
+			}
+		}
+		log("Stream ready. Try to read stream");
+		echoON();
+	}
+
+	private final List<FileListItem> readListFile(final BufferedReader reader,
+			final int mode) {
+
+		final List<FileListItem> result = new ArrayList<FileListItem>();
+		if (reader != null) {
+			String line, name = "";
+			boolean directory = false;;
+			try {
+				prepareToReadStream(reader);
+				while (reader.ready()) {
+					directory = false;
+					line = reader.readLine();
+					if (mode == Connection.MODE_NLST) {
+						name = line;
+					} else if (mode == Connection.MODE_LIST) {
+						final String sublines[] = line.split(" ");
+						name = sublines[sublines.length - 1];
+						directory = isDirectory(sublines);
+					}
+					result.add(new FileListItem(name, directory));
+				}
+			} catch (final IOException e) {
+				e.printStackTrace();
+				log("Unable to read stream. Try again");
+			}
+		}
+		return result;
+	}
+
+	private final List<FileListItem> readListOfFiles(final Socket sock, final int mode) {
+
+		final List<FileListItem> result = new ArrayList<FileListItem>();
 		if (sock != null) {
 			BufferedReader istream = null;
 			try {
@@ -218,8 +280,8 @@ public class Connection extends Thread {// implements Runnable {
 				// e.printStackTrace();
 				log("Unable extract stream from data socket");
 			}
+			result.addAll(readListFile(istream, mode));
 
-			result.addAll(readReplies(istream));
 			try {
 				sock.close();
 			} catch (final IOException e) {
@@ -240,13 +302,7 @@ public class Connection extends Thread {// implements Runnable {
 		if (reader != null) {
 			String line;
 			try {
-				echoOFF();
-				log("wait for read stream");
-				while (!reader.ready()) {
-					;
-				}
-				log("try to read stream");
-				echoON();
+				prepareToReadStream(reader);
 				while (reader.ready()) {
 					line = reader.readLine();
 					result.add(line);
@@ -265,13 +321,7 @@ public class Connection extends Thread {// implements Runnable {
 
 		if (reader != null) {
 			try {
-				echoOFF();
-				log("wait for read stream");
-				while (!reader.ready()) {
-					;
-				}
-				log("try to read stream");
-				echoON();
+				prepareToReadStream(reader);
 				final String line = reader.readLine();
 				log(line);
 				return line;
@@ -342,6 +392,18 @@ public class Connection extends Thread {// implements Runnable {
 		}
 	}
 
+	private void sleep() {
+
+		try {
+			Thread.sleep(Connection.SLEEP_TIME);
+		} catch (final InterruptedException e) {
+			// e.printStackTrace();
+			echoOFF();
+			log("Unable to sleep");
+			echoON();
+		}
+	}
+
 	public void taskChangeDirectory(final String path) {
 
 		command_CWD = true;
@@ -360,8 +422,8 @@ public class Connection extends Thread {// implements Runnable {
 
 	private void updateList() {
 
-		final List<String> fileList = getListOfFiles();
-		controller.setFileList(fileList);
+		final List<FileListItem> fileList = getListOfFiles(Connection.MODE_LIST);
+		controller.setFilesInList(fileList);
 	}
 
 }
