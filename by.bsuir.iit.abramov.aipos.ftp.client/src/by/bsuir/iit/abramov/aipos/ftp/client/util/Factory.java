@@ -6,6 +6,7 @@ import by.bsuir.iit.abramov.aipos.ftp.client.listeners.CDUPButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.DisconnectButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.ManagerConnectButtonListener;
 import by.bsuir.iit.abramov.aipos.ftp.client.listeners.OpenManagerButtonListener;
+import by.bsuir.iit.abramov.aipos.ftp.client.listeners.STOREButtonListener;
 
 public class Factory {
 	static public ActionListener getButtonController(final Button eButton) {
@@ -17,6 +18,8 @@ public class Factory {
 				return new DisconnectButtonListener();
 			case CWD:
 				return new CDUPButtonListener();
+			case STORE:
+				return new STOREButtonListener();
 			default:
 				return null;
 		}

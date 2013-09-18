@@ -2,6 +2,8 @@ package by.bsuir.iit.abramov.aipos.ftp.client.model;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -18,13 +20,17 @@ import by.bsuir.iit.abramov.aipos.ftp.client.util.Operation;
 
 public class Connection implements Runnable {
 
-	private static final int	MODE_LIST	= 1;
-	private static final int	MODE_NLST	= 0;
-	private static final int	SLEEP_TIME	= 10;
-	private static final int	ECHO_OFF	= 0;
-	private static final int	ECHO_ON		= 1;
+	private static final String	ACCEPTED_DATA_CONNECTION	= "150";
+	private static final String	CODE_RETR_SUCCESS			= Connection.ACCEPTED_DATA_CONNECTION;
+	private static final String	CODE_PASV_SUCCESS			= "227";
+	private static final int	MODE_RETR					= 2;
+	private static final int	MODE_LIST					= 1;
+	private static final int	MODE_NLST					= 0;
+	private static final int	SLEEP_TIME					= 10;
+	private static final int	ECHO_OFF					= 0;
+	private static final int	ECHO_ON						= 1;
 
-	private static final String	END_LINE	= "\r\n";
+	private static final String	END_LINE					= "\r\n";
 
 	private Socket				socket;
 	private final String		host;
@@ -36,12 +42,16 @@ public class Connection implements Runnable {
 	private final Controller	controller;
 	private int					echo;
 	private boolean				command_login;
+	private boolean				command_logout;
 	private boolean				login;
 	private boolean				PASV;
 	private boolean				command_CDUP;
 	private boolean				command_CWD;
+	private boolean				command_RETR;
 	private boolean				command_UpdateList;
 	private String				CWD_path;
+	private String				RETR_serverPath;
+	private String				RETR_path;
 
 	public Connection(final Controller controller, final String host, final int port,
 			final String user, final String pass) {
@@ -63,6 +73,35 @@ public class Connection implements Runnable {
 		updateList();
 	}
 
+	private boolean checkLine(final String line, final String successCode) {
+
+		final String substrings[] = line.split(" ");
+		final String code = substrings[0];
+		return successCode.equals(code);
+	}
+
+	private void clearFileList() {
+
+		controller.clearFileList();
+	}
+
+	private FileWriter createFileWriter(final Socket sock, final String path) {
+
+		FileWriter writer = null;
+		try {
+			writer = new FileWriter(new File(path));
+		} catch (final IOException e1) {
+			log("Unable to create FileOutputStream");
+			try {
+				sock.close();
+			} catch (final IOException e2) {
+				log("Error: unable to close data socket");
+			}
+			echoON();
+		}
+		return writer;
+	}
+
 	private void createSocket() {
 
 		try {
@@ -80,7 +119,6 @@ public class Connection implements Runnable {
 
 		createSocket();
 		if (socket.isConnected()) {
-			login = true;
 			log("Control connection established");
 			extractStreams();
 			readReplies(iostream);
@@ -106,6 +144,23 @@ public class Connection implements Runnable {
 	private void echoON() {
 
 		echo = Connection.ECHO_ON;
+	}
+
+	private BufferedReader extractInputStream(final Socket sock) {
+
+		BufferedReader istream = null;
+		try {
+			istream = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+		} catch (final IOException e) {
+			log("Unable extract stream from data socket");
+			try {
+				sock.close();
+			} catch (final IOException e1) {
+				log("Error: unable to close data socket");
+			}
+			echoON();
+		}
+		return istream;
 	}
 
 	private void extractStreams() {
@@ -162,9 +217,7 @@ public class Connection implements Runnable {
 
 		echoOFF();
 		final List<FileListItem> result = new ArrayList<FileListItem>();
-		sendRequest(Operation.PASV.getOperation());
-		final String reply = readReply(iostream);
-		final Socket miniSocket = getDataConnection(reply);
+		final Socket miniSocket = PASV();
 		if (miniSocket == null) {
 			final String error = "miniSocket == null";
 			log(error);
@@ -177,10 +230,23 @@ public class Connection implements Runnable {
 			} else if (mode == Connection.MODE_LIST) {
 				sendRequest(Operation.LIST.getOperation());
 			}
+			if ("".equals(readReply(iostream, Connection.ACCEPTED_DATA_CONNECTION))) {
+				return result;
+			}
 			result.addAll(readListOfFiles(miniSocket, mode));
 		}
 		echoON();
 		return result;
+	}
+
+	private final String getSuccessCode(final Operation operation) {
+
+		switch (operation) {
+			case RETR:
+				return "";
+			default:
+				return "";
+		}
 	}
 
 	private final String hideString(final String text) {
@@ -216,6 +282,16 @@ public class Connection implements Runnable {
 		readReplies(iostream);
 		sendPass(Operation.PASS + " " + pass);
 		readReplies(iostream);
+		login = true;
+		command_UpdateList = true;
+	}
+
+	private Socket PASV() {
+
+		sendRequest(Operation.PASV.getOperation());
+		final String reply = readReply(iostream, Connection.CODE_PASV_SUCCESS);
+		final Socket miniSocket = getDataConnection(reply);
+		return miniSocket;
 	}
 
 	private void prepareToReadStream(final BufferedReader reader) throws IOException {
@@ -240,6 +316,13 @@ public class Connection implements Runnable {
 		echoON();
 	}
 
+	private void quit() {
+
+		sendRequest(Operation.QUIT.getOperation());
+		readReplies(iostream);
+		clearFileList();
+	}
+
 	private final List<FileListItem> readListFile(final BufferedReader reader,
 			final int mode) {
 
@@ -248,6 +331,7 @@ public class Connection implements Runnable {
 			String line, name = "";
 			boolean directory = false;;
 			try {
+				System.out.println("begin reading");
 				prepareToReadStream(reader);
 				while (reader.ready()) {
 					directory = false;
@@ -277,15 +361,20 @@ public class Connection implements Runnable {
 			try {
 				istream = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 			} catch (final IOException e) {
-				// e.printStackTrace();
 				log("Unable extract stream from data socket");
+				try {
+					sock.close();
+				} catch (final IOException e1) {
+					log("Error: unable to close data socket");
+				}
+				echoON();
+				return result;
 			}
 			result.addAll(readListFile(istream, mode));
 
 			try {
 				sock.close();
 			} catch (final IOException e) {
-				// e.printStackTrace();
 				echoOFF();
 				log("Error: unable to close data socket");
 				echoON();
@@ -317,20 +406,42 @@ public class Connection implements Runnable {
 
 	}
 
-	private String readReply(final BufferedReader reader) {
+	private String readReply(final BufferedReader reader, final String successCode) {
 
 		if (reader != null) {
 			try {
 				prepareToReadStream(reader);
 				final String line = reader.readLine();
 				log(line);
-				return line;
+				if (checkLine(line, successCode)) {
+					return line;
+				}
 			} catch (final IOException e) {
 				// e.printStackTrace();
 				log("Unable to read stream. Try again");
 			}
 		}
-		return null;
+		return "";
+	}
+
+	private void RETR(final String serverPath, final String path) {
+
+		final Socket dataSocket = PASV();
+		if (dataSocket == null) {
+			log("dataSocket == null");
+			return;
+		}
+		if (dataSocket.isConnected()) {
+			log("Data connection established");
+			sendRequest(Operation.RETR + " " + serverPath);
+			final String reply = readReply(iostream, Connection.CODE_RETR_SUCCESS);
+			System.out.println("before save");
+			if ("".equals(reply)) {
+				return;
+			}
+			saveFile(dataSocket, serverPath, path);
+			readReplies(iostream);
+		}
 	}
 
 	@Override
@@ -344,12 +455,26 @@ public class Connection implements Runnable {
 				}
 				command_login = false;
 			}
+			if (command_logout) {
+				if (login) {
+					quit();
+				}
+				command_logout = false;
+			}
 			if (command_CWD) {
 				if (!"".equals(CWD_path)) {
 					CWD(CWD_path);
 				}
 				CWD_path = "";
 				command_CWD = false;
+			}
+			if (command_RETR) {
+				if (!"".equals(RETR_serverPath)) {
+					RETR(RETR_serverPath, RETR_path);
+				}
+				RETR_path = "";
+				RETR_serverPath = "";
+				command_RETR = false;
 			}
 			if (command_CDUP) {
 				CDUP();
@@ -360,6 +485,43 @@ public class Connection implements Runnable {
 				command_UpdateList = false;
 			}
 
+		}
+	}
+
+	private void saveFile(final BufferedReader reader, final FileWriter writer) {
+
+		if (reader != null) {
+			try {
+				prepareToReadStream(reader);
+				int val;
+				while ((val = reader.read()) != -1) {
+					writer.write(val);
+				}
+				writer.flush();
+			} catch (final IOException e) {
+				log("Unable to save file. Try again");
+			}
+		}
+	}
+
+	private void saveFile(final Socket sock, final String serverPath, final String path) {
+
+		if (sock != null) {
+			BufferedReader istream = null;
+			FileWriter writer = null;
+			istream = extractInputStream(sock);
+			writer = createFileWriter(sock, path);
+			if (istream != null && writer != null) {
+				saveFile(istream, writer);
+			}
+			try {
+				sock.close();
+				writer.close();
+			} catch (final IOException e) {
+				echoOFF();
+				log("Error: unable to close socket connection");
+				echoON();
+			}
 		}
 	}
 
@@ -413,6 +575,18 @@ public class Connection implements Runnable {
 	public void taskChangeDirectoryUP() {
 
 		command_CDUP = true;
+	}
+
+	public void taskQUIT() {
+
+		command_logout = true;
+	}
+
+	public void taskRETRFile(final String serverPath, final String path) {
+
+		command_RETR = true;
+		RETR_serverPath = serverPath;
+		RETR_path = path;
 	}
 
 	public void taskUpdateList() {

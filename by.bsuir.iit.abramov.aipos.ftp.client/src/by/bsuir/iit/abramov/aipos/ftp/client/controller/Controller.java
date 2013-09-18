@@ -21,6 +21,11 @@ public class Controller {
 		model.CDUP();
 	}
 
+	public void clearFileList() {
+
+		window.clearFileList();
+	}
+
 	public void connect(final String host, final int port, final String user,
 			final String pass) throws IOException {
 
@@ -37,6 +42,16 @@ public class Controller {
 		window.openManager();
 	}
 
+	public void quit() {
+
+		model.quit();
+	}
+
+	public void RETR(final String serverPath, final String path) {
+
+		model.RETR(serverPath, path);
+	}
+
 	public void setFilesInList(final List<FileListItem> arg0) {
 
 		window.setFilesInList(arg0);
@@ -50,6 +65,11 @@ public class Controller {
 	public void setWindow(final Window window) {
 
 		this.window = window;
+	}
+
+	public void STORE(final String path) {
+
+		// model.STORE(path);
 	}
 
 	public void updateFileList() {

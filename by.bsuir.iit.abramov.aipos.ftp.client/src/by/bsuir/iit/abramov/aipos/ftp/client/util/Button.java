@@ -1,7 +1,8 @@
 package by.bsuir.iit.abramov.aipos.ftp.client.util;
 
 public enum Button {
-	MANAGER("Manager", true), DISCONNECT("Disconnect", true), CWD("CWD", true);
+	MANAGER("Manager", true), DISCONNECT("Disconnect", true), CWD("CWD", true), STORE(
+			"Store", true);
 
 	private final String	caption;
 	private final boolean	visible;

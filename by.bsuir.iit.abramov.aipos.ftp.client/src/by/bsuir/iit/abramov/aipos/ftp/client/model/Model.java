@@ -49,6 +49,20 @@ public class Model {
 		System.out.println("Wrong path");
 	}
 
+	public void quit() {
+
+		connection.taskQUIT();
+	}
+
+	public void RETR(final String serverPath, final String path) {
+
+		if ("".equals(serverPath)) {
+			errorMessage();
+			return;
+		}
+		connection.taskRETRFile(serverPath, path);
+	}
+
 	public void updateFileList() {
 
 		connection.taskUpdateList();

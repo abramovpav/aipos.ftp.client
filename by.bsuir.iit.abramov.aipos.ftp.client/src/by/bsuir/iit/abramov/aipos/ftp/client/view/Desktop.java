@@ -36,6 +36,11 @@ public class Desktop {
 		logger.addLine(text);
 	}
 
+	public void clearFileList() {
+
+		fileList.clear();
+	}
+
 	public final Controller getController() {
 
 		if (parent != null) {

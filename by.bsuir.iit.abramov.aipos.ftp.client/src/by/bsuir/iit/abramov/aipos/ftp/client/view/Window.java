@@ -33,6 +33,11 @@ public class Window extends JFrame {
 		desktop.addLogLine(text);
 	}
 
+	public void clearFileList() {
+
+		desktop.clearFileList();
+	}
+
 	public final Controller getController() {
 
 		return controller;
