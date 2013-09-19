@@ -346,11 +346,13 @@ public class Connection implements Runnable {
 		sendRequest(Operation.USER + " " + user);
 		List<String> reply = readReply(iostream, Connection.CODE_USER_SUCCESS);
 		if (reply.size() == 0) {
+			quit();
 			return;
 		}
 		sendPass(Operation.PASS + " " + pass);
 		reply = readReply(iostream, Connection.CODE_PASS_SUCCESS);
 		if (reply.size() == 0) {
+			quit();
 			return;
 		}
 		login = true;
@@ -553,6 +555,7 @@ public class Connection implements Runnable {
 					quit();
 				}
 				command_logout = false;
+				return;
 			}
 			if (command_CWD) {
 				if (!"".equals(CWD_path)) {

@@ -81,9 +81,12 @@ public class Desktop {
 
 		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 		mainPanel.add(headerPanel);
+		final JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+		mainPanel.add(panel);
 		final JScrollPane scrollList = new JScrollPane(logger);
-		mainPanel.add(scrollList);
-		mainPanel.add(filePanel);
+		panel.add(scrollList);
+		panel.add(filePanel);
 		logger.setEditable(false);
 		addLogLine("Hello, man!");
 		initFilePanel();
