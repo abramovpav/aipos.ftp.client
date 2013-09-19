@@ -21,6 +21,9 @@ import by.bsuir.iit.abramov.aipos.ftp.client.util.Operation;
 
 public class Connection implements Runnable {
 
+	private static final String	CODE_INFORMATION			= "220";
+	private static final String	CODE_PASS_SUCCESS			= "230";
+	private static final String	CODE_USER_SUCCESS			= "331";
 	private static final String	ACCEPTED_DATA_CONNECTION	= "150";
 	private static final String	CODE_RETR_SUCCESS			= Connection.ACCEPTED_DATA_CONNECTION;
 	private static final String	CODE_PASV_SUCCESS			= "227";
@@ -81,9 +84,12 @@ public class Connection implements Runnable {
 
 	private boolean checkLine(final String line, final String successCode) {
 
-		final String substrings[] = line.split(" ");
-		final String code = substrings[0];
-		return successCode.equals(code);
+		if (line.length() >= 2) {
+			final String code = line.substring(0, 3);
+			return successCode.equals(code);
+		} else {
+			return false;
+		}
 	}
 
 	private void clearFileList() {
@@ -144,7 +150,10 @@ public class Connection implements Runnable {
 		if (socket.isConnected()) {
 			log("Control connection established");
 			extractStreams();
-			readReplies(iostream);
+			final List<String> reply = readReply(iostream, Connection.CODE_INFORMATION);
+			if (reply.size() == 0) {
+				return;
+			}
 			login();
 
 		} else {
@@ -314,6 +323,16 @@ public class Connection implements Runnable {
 		return echo == Connection.ECHO_ON;
 	}
 
+	private boolean isMultipleReply(final String reply) {
+
+		if (reply.length() >= 3) {
+			final char hyphen = reply.charAt(3);
+			return hyphen == '-';
+		} else {
+			return false;
+		}
+	}
+
 	private void log(final String text) {
 
 		System.out.println(text);
@@ -325,9 +344,15 @@ public class Connection implements Runnable {
 	private void login() {
 
 		sendRequest(Operation.USER + " " + user);
-		readReplies(iostream);
+		List<String> reply = readReply(iostream, Connection.CODE_USER_SUCCESS);
+		if (reply.size() == 0) {
+			return;
+		}
 		sendPass(Operation.PASS + " " + pass);
-		readReplies(iostream);
+		reply = readReply(iostream, Connection.CODE_PASS_SUCCESS);
+		if (reply.size() == 0) {
+			return;
+		}
 		login = true;
 		command_UpdateList = true;
 	}
@@ -335,8 +360,11 @@ public class Connection implements Runnable {
 	private Socket PASV() {
 
 		sendRequest(Operation.PASV.getOperation());
-		final String reply = readReply(iostream, Connection.CODE_PASV_SUCCESS);
-		final Socket miniSocket = getDataConnection(reply);
+		final List<String> reply = readReply(iostream, Connection.CODE_PASV_SUCCESS);
+		if (reply.size() == 0) {
+			return null;
+		}
+		final Socket miniSocket = getDataConnection(reply.get(0));
 		return miniSocket;
 	}
 
@@ -350,7 +378,9 @@ public class Connection implements Runnable {
 			sleep();
 			t += Connection.SLEEP_TIME;
 			if (t / 2000 >= limit) {
+				echoON();
 				log("Waiting for long. Cancel the operation and try again");
+				echoOFF();
 				limit += 1;
 				if (Math.abs(10000 - t) < Connection.SLEEP_TIME * 2) {
 					t = 0;
@@ -452,22 +482,39 @@ public class Connection implements Runnable {
 
 	}
 
-	private String readReply(final BufferedReader reader, final String successCode) {
+	private List<String> readReply(final BufferedReader reader, final String successCode) {
 
+		final List<String> results = new ArrayList<String>();
+		boolean ok = false;
 		if (reader != null) {
 			try {
 				prepareToReadStream(reader);
-				final String line = reader.readLine();
+				String line = reader.readLine();
 				log(line);
-				if (checkLine(line, successCode)) {
-					return line;
+				if (isMultipleReply(line)) {
+					if (checkLine(line, successCode)) {
+						ok = true;
+					}
+					if (ok) {
+						results.add(line);
+					}
+					while (isMultipleReply((line = reader.readLine()))) {
+						if (ok) {
+							results.add(line);
+							log(line);
+						}
+					}
+				} else {
+					if (checkLine(line, successCode)) {
+						results.add(line);
+					}
 				}
+
 			} catch (final IOException e) {
-				// e.printStackTrace();
 				log("Unable to read stream. Try again");
 			}
 		}
-		return "";
+		return results;
 	}
 
 	private void RETR(final String serverPath, final String path) {
@@ -480,9 +527,9 @@ public class Connection implements Runnable {
 		if (dataSocket.isConnected()) {
 			log("Data connection established");
 			sendRequest(Operation.RETR + " " + serverPath);
-			final String reply = readReply(iostream, Connection.CODE_RETR_SUCCESS);
+			final List<String> reply = readReply(iostream, Connection.CODE_RETR_SUCCESS);
 			System.out.println("before save");
-			if ("".equals(reply)) {
+			if (reply.size() == 0) {
 				return;
 			}
 			saveFile(dataSocket, serverPath, path);
@@ -634,9 +681,9 @@ public class Connection implements Runnable {
 		if (dataSocket.isConnected()) {
 			log("Data connection established");
 			sendRequest(Operation.STOR + " " + serverPath);
-			final String reply = readReply(iostream, Connection.CODE_RETR_SUCCESS);
+			final List<String> reply = readReply(iostream, Connection.CODE_RETR_SUCCESS);
 			System.out.println("before save");
-			if ("".equals(reply)) {
+			if (reply.size() == 0) {
 				return;
 			}
 			storeFile(dataSocket, path);
